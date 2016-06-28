@@ -389,6 +389,7 @@
    <field name="dataCollectionSituation" type="text_en" multiValued="false" stored="true" indexed="true"/>
    <field name="dataCollector" type="text_en" multiValued="false" stored="true" indexed="true"/>
    <field name="dataSources" type="text_en" multiValued="true" stored="true" indexed="true"/>
+   <field name="dataType" type="text_en" multiValued="false" stored="true" indexed="true"/>
    <field name="datadePublicao" type="text_en" multiValued="false" stored="true" indexed="true"/>
    <field name="datasetContact" type="text_en" multiValued="true" stored="true" indexed="true"/>
    <field name="datasetContactAffiliation" type="text_en" multiValued="true" stored="true" indexed="true"/>
@@ -683,6 +684,7 @@
    <copyField source="dataCollectionSituation" dest="text" maxChars="3000"/>
    <copyField source="dataCollector" dest="text" maxChars="3000"/>
    <copyField source="dataSources" dest="text" maxChars="3000"/>
+   <copyField source="dataType" dest="text" maxChars="3000"/>
    <copyField source="datadePublicao" dest="text" maxChars="3000"/>
    <copyField source="datasetContact" dest="text" maxChars="3000"/>
    <copyField source="datasetContactAffiliation" dest="text" maxChars="3000"/>

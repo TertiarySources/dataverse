@@ -563,7 +563,11 @@ public class BuiltinUserPage implements java.io.Serializable {
                 case CREATEDV:
                     userNotification.setTheObject(dataverseService.find(userNotification.getObjectId()));
                     break;
- 
+
+                case CHECKSUMFAIL:
+                    userNotification.setTheObject(datasetService.find(userNotification.getObjectId()));
+                    break;
+
                 case REQUESTFILEACCESS:
                     DataFile file = fileService.find(userNotification.getObjectId());
                     userNotification.setTheObject(file.getOwner());

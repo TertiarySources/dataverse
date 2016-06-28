@@ -78,6 +78,7 @@
 	originOfSources	Origin of Sources	For historical materials, information about the origin of the sources and the rules followed in establishing the sources should be specified.		textbox	74		FALSE	FALSE	FALSE	FALSE	FALSE	FALSE		citation
 	characteristicOfSources	Characteristic of Sources Noted	Assessment of characteristics and source material.		textbox	75		FALSE	FALSE	FALSE	FALSE	FALSE	FALSE		citation
 	accessToSources	Documentation and Access to Sources	Level of documentation of the original sources.		textbox	76		FALSE	FALSE	FALSE	FALSE	FALSE	FALSE		citation
+	dataType	Data Type	We currently support X-ray diffraction datasets. If you would like to deposit any other dataset type please contact us first.		text	77		TRUE	TRUE	FALSE	TRUE	TRUE	FALSE		citation
 #controlledVocabulary	DatasetField	Value	identifier	displayOrder											
 	subject	Agricultural Sciences	D01	0											
 	subject	Arts and Humanities	D0	1											
@@ -315,3 +316,7 @@
 	language	Zhuang, Chuang		182											
 	language	Zulu		183											
 	language	Not applicable		184											
+	dataType	X-Ray Diffraction	xray	0
+	dataType	Structural Model	sm	1
+	dataType	Micro-Electron Diffraction	me	2
+	dataType	Lattice Light-Sheet Microscopy	llsm	3

@@ -250,6 +250,19 @@
                                                     </h:outputFormat>  
                                                     </ui:fragment>
                                                 </ui:fragment>
+                                                <ui:fragment rendered="#{item.type == 'CHECKSUMFAIL'}">
+                                                    <!--
+                                                    TODO: Rather than matching on hard-coded strings such as "CHECKSUMFAIL"
+                                                    a more type-safe approach would be to use the "Type" enum in UserNotification.
+                                                    Also, isInstanceofDataset() should be checked, probably.
+                                                    -->
+                                                    <i class="icon-dataverse text-icon-inline text-muted"></i>
+                                                    <h:outputFormat value="#{bundle['notification.checksumfail']}">
+                                                        <o:param>
+                                                            <h:outputText value="#{item.theObject.getGlobalId()}"/>
+                                                        </o:param>
+                                                    </h:outputFormat>
+                                                </ui:fragment>
                                             </ui:fragment>
                                             <h:outputText value="#{item.sendDate}" styleClass="text-muted small"/>
                                         </div>

@@ -34,6 +34,10 @@ public class SettingsServiceBean {
      */
     public enum Key {
         /**
+         * For example, https://datacapture.example.org
+         */
+        DataCaptureModuleUrl,
+        /**
          * Override Solr highlighting "fragsize"
          * https://wiki.apache.org/solr/HighlightingParameters#hl.fragsize
          */

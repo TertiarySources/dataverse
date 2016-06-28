@@ -221,6 +221,8 @@ public class MailServiceBean implements java.io.Serializable {
                 return ResourceBundle.getBundle("Bundle").getString("notification.email.returned.dataset.subject");
             case CREATEACC:
                 return ResourceBundle.getBundle("Bundle").getString("notification.email.create.account.subject");
+            case CHECKSUMFAIL:
+                return ResourceBundle.getBundle("Bundle").getString("notification.email.checksumfail.subject");
         }
         return "";
     }
@@ -427,6 +429,13 @@ public class MailServiceBean implements java.io.Serializable {
                         systemConfig.getVersion()
                 ));
                 return messageText += accountCreatedMessage;
+            case CHECKSUMFAIL:
+                dataset = (Dataset) targetObject;
+                String checksumFailMessage = BundleUtil.getStringFromBundle("notification.checksumfail", Arrays.asList(
+                        dataset.getGlobalId()
+                ));
+                return messageText += checksumFailMessage;
+
         }
         
         return "";
@@ -457,6 +466,8 @@ public class MailServiceBean implements java.io.Serializable {
                 return versionService.find(userNotification.getObjectId());
             case CREATEACC:
                 return userNotification.getUser();
+            case CHECKSUMFAIL:
+                return datasetService.find(userNotification.getObjectId());
         }
         return null;
     }

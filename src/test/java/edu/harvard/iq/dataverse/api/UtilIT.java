@@ -19,6 +19,8 @@ import com.jayway.restassured.path.xml.XmlPath;
 import org.junit.Test;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.path.xml.XmlPath.from;
+import edu.harvard.iq.dataverse.settings.SettingsServiceBean;
+import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -84,7 +86,7 @@ public class UtilIT {
         return "user" + getRandomIdentifier().substring(0, 8);
     }
 
-    private static String getRandomIdentifier() {
+    static String getRandomIdentifier() {
         return UUID.randomUUID().toString().substring(0, 8);
     }
 
@@ -132,21 +134,31 @@ public class UtilIT {
         return response;
     }
 
-    static Response createDataverse(String alias, String apiToken) {
+    static Response createDataverse(String alias, List<String> fileUploadMechanismsEnabled, String apiToken) {
         JsonArrayBuilder contactArrayBuilder = Json.createArrayBuilder();
         contactArrayBuilder.add(Json.createObjectBuilder().add("contactEmail", getEmailFromUserName(getRandomIdentifier())));
         JsonArrayBuilder subjectArrayBuilder = Json.createArrayBuilder();
         subjectArrayBuilder.add("Other");
+        JsonArrayBuilder fileUploadMechanismEnabled = Json.createArrayBuilder();
+        fileUploadMechanismsEnabled.stream().forEach((mechanism) -> {
+            fileUploadMechanismEnabled.add(mechanism);
+        });
         JsonObject dvData = Json.createObjectBuilder()
                 .add("alias", alias)
                 .add("name", alias)
                 .add("dataverseContacts", contactArrayBuilder)
                 .add("dataverseSubjects", subjectArrayBuilder)
+                .add("fileUploadMechanismsEnabled", fileUploadMechanismEnabled)
                 .build();
         Response createDataverseResponse = given()
                 .body(dvData.toString()).contentType(ContentType.JSON)
                 .when().post("/api/dataverses/:root?key=" + apiToken);
         return createDataverseResponse;
+    }
+
+    static Response createDataverse(String alias, String apiToken) {
+        List<String> fileUploadMechanismsEnabled = new ArrayList<>();
+        return createDataverse(alias, fileUploadMechanismsEnabled, apiToken);
     }
 
     static Response createRandomDataverse(String apiToken) {
@@ -177,6 +189,27 @@ public class UtilIT {
 
     private static String getDatasetJson() {
         File datasetVersionJson = new File("scripts/search/tests/data/dataset-finch1.json");
+        try {
+            String datasetVersionAsJson = new String(Files.readAllBytes(Paths.get(datasetVersionJson.getAbsolutePath())));
+            return datasetVersionAsJson;
+        } catch (IOException ex) {
+            Logger.getLogger(UtilIT.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
+        }
+    }
+
+    static Response createDatasetWithDcmDependency(String dataverseAlias, String apiToken) {
+        String jsonIn = getDatasetJsonWithDcmDependency();
+        Response createDatasetResponse = given()
+                .header(API_TOKEN_HTTP_HEADER, apiToken)
+                .body(jsonIn)
+                .contentType("application/json")
+                .post("/api/dataverses/" + dataverseAlias + "/datasets");
+        return createDatasetResponse;
+    }
+
+    private static String getDatasetJsonWithDcmDependency() {
+        File datasetVersionJson = new File("src/test/java/edu/harvard/iq/dataverse/api/x-ray-diffraction.json");
         try {
             String datasetVersionAsJson = new String(Files.readAllBytes(Paths.get(datasetVersionJson.getAbsolutePath())));
             return datasetVersionAsJson;
@@ -457,6 +490,11 @@ public class UtilIT {
                 .header(API_TOKEN_HTTP_HEADER, apiToken)
                 .body(data)
                 .put("/api/admin/authenticatedUsers/convert/builtin2shib");
+        return response;
+    }
+
+    static Response configureSetting(SettingsServiceBean.Key settingKey, String value) {
+        Response response = given().body(value).when().put("/api/admin/settings/" + settingKey);
         return response;
     }
 

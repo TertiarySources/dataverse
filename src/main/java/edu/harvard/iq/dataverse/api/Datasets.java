@@ -9,9 +9,11 @@ import edu.harvard.iq.dataverse.DatasetVersion;
 import edu.harvard.iq.dataverse.Dataverse;
 import edu.harvard.iq.dataverse.DataverseServiceBean;
 import edu.harvard.iq.dataverse.MetadataBlock;
+import edu.harvard.iq.dataverse.UserNotification;
 import static edu.harvard.iq.dataverse.api.AbstractApiBean.errorResponse;
 import edu.harvard.iq.dataverse.authorization.DataverseRole;
 import edu.harvard.iq.dataverse.authorization.RoleAssignee;
+import edu.harvard.iq.dataverse.authorization.users.AuthenticatedUser;
 import edu.harvard.iq.dataverse.authorization.users.User;
 import edu.harvard.iq.dataverse.engine.command.Command;
 import edu.harvard.iq.dataverse.engine.command.DataverseRequest;
@@ -27,24 +29,30 @@ import edu.harvard.iq.dataverse.engine.command.impl.GetLatestAccessibleDatasetVe
 import edu.harvard.iq.dataverse.engine.command.impl.GetLatestPublishedDatasetVersionCommand;
 import edu.harvard.iq.dataverse.engine.command.impl.ListVersionsCommand;
 import edu.harvard.iq.dataverse.engine.command.impl.PublishDatasetCommand;
+import edu.harvard.iq.dataverse.engine.command.impl.RequestRsyncScriptCommand;
 import edu.harvard.iq.dataverse.engine.command.impl.SetDatasetCitationDateCommand;
 import edu.harvard.iq.dataverse.engine.command.impl.UpdateDatasetTargetURLCommand;
 import edu.harvard.iq.dataverse.engine.command.impl.UpdateDatasetVersionCommand;
 import edu.harvard.iq.dataverse.export.DDIExportServiceBean;
 import edu.harvard.iq.dataverse.export.ddi.DdiExportUtil;
+import edu.harvard.iq.dataverse.util.EjbUtil;
 import edu.harvard.iq.dataverse.util.SystemConfig;
 import edu.harvard.iq.dataverse.util.json.JsonParseException;
 import static edu.harvard.iq.dataverse.util.json.JsonPrinter.*;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.StringReader;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.ejb.EJB;
+import javax.ejb.EJBException;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
+import javax.json.JsonNumber;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.ws.rs.DELETE;
@@ -558,6 +566,101 @@ public class Datasets extends AbstractApiBean {
                     json(execCommand(new AssignRoleCommand(assignee, theRole, dataset, createDataverseRequest(findUserOrDie())))));
         } catch (WrappedResponse ex) {
             LOGGER.log(Level.WARNING, "Can''t create assignment: {0}", ex.getMessage());
+            return ex.getResponse();
+        }
+    }
+
+    @GET
+    @Path("{identifier}/dataCaptureModule/rsync")
+    public Response getRsync(@PathParam("identifier") String id) {
+        try {
+            Dataset dataset = findDatasetOrDie(id);
+            /**
+             * @todo This logic really doesn't belong here but for now the Data
+             * Capture Module will blindly create an rsync script for *any*
+             * dataset, regardless of if the dataset has been configured to
+             * support rsync or not.
+             */
+            for (DatasetField datasetField : dataset.getLatestVersion().getDatasetFields()) {
+                /**
+                 * @todo What should the trigger be for kicking off the
+                 * RequestRsyncScriptCommand? For now we're looking for the
+                 * presence of the "dataType" field, which is way too course.
+                 * This is copied from CreateDatasetCommand.
+                 */
+                if ("dataType".equals(datasetField.getDatasetFieldType().getName())) {
+                    JsonObjectBuilder jab = execCommand(new RequestRsyncScriptCommand(createDataverseRequest(findUserOrDie()), dataset));
+                    return okResponse(jab);
+                }
+            }
+        } catch (WrappedResponse ex) {
+            return ex.getResponse();
+        } catch (EJBException ex) {
+            /**
+             * @todo Ask Michael if we can simply have `execCommand` (and the
+             * GUI equivalent, which is `commandEngine.submit` catch a
+             * EJBException and/or RuntimeException instead of having this log
+             * here. Note how DatasetPage, for example, has to catch
+             * EJBException when issuing CreateDatasetCommand. The engine should
+             * probably be doing more error handling.
+             */
+            return errorResponse(Response.Status.INTERNAL_SERVER_ERROR, "Unable to get an rsync script: " + EjbUtil.ejbExceptionToString(ex));
+        }
+        return errorResponse(Response.Status.NOT_FOUND, "An rsync script was not found for dataset id " + id);
+    }
+
+    /**
+     * @todo How will authentication be handled for this method?
+     */
+    @POST
+    @Path("{identifier}/dataCaptureModule/checksumValidation")
+    public Response receiveChecksumValidationResults(@PathParam("identifier") String id, JsonObject result) {
+        /**
+         * @todo What kind of error checking do we need here?
+         */
+        long userIdWhoMadeUploadRequest = result.getJsonNumber("userId").longValue();
+        long datasetId = result.getJsonNumber("datasetId").longValue();
+        String status = result.getString("status");
+        try {
+            /**
+             * @todo Make sure id and datasetId match, I guess. Or maybe
+             * datasetId doesn't need to be sent in the JSON since we're using
+             * the id that was sent in the path.
+             */
+            Dataset dataset = findDatasetOrDie(id);
+            String rsyncScript = dataset.getRsyncScript();
+            if (rsyncScript == null || rsyncScript.isEmpty()) {
+                return errorResponse(Response.Status.BAD_REQUEST, "Dataset id " + dataset.getId() + " does not have an rsync script.");
+            }
+            if ("validation passed".equals(status)) {
+                /**
+                 * @todo Actually kick off the crawling and importing code at
+                 * https://github.com/bmckinney/bio-dataverse/tree/feature/file-system-import
+                 */
+                return okResponse("Next we will write code to kick off crawling and importing of files ( https://github.com/bmckinney/bio-dataverse/tree/feature/file-system-import ) and which will notify the user if the crawling and importing was successful or not.");
+            } else if ("validation failed".equals(status)) {
+                /**
+                 * @todo We've talked about notifying all users who have edit
+                 * access to the dataset rather than just the user who made the
+                 * upload request.
+                 */
+                AuthenticatedUser au;
+                try {
+                    au = userSvc.find(userIdWhoMadeUploadRequest);
+                } catch (Exception ex) {
+                    return errorResponse(Response.Status.BAD_REQUEST, "Unable to notify user about checksum validation failure. Could not find user based on id " + userIdWhoMadeUploadRequest + ".");
+                }
+                /**
+                 * @todo Make sure an email is sent as well.
+                 */
+                userNotificationSvc.sendNotification(au,
+                        new Timestamp(new Date().getTime()),
+                        UserNotification.Type.CHECKSUMFAIL, dataset.getId());
+                return okResponse("User notified about checksum validation failure.");
+            } else {
+                return errorResponse(Response.Status.BAD_REQUEST, "Unexpected status cannot be processed: " + status);
+            }
+        } catch (WrappedResponse ex) {
             return ex.getResponse();
         }
     }

@@ -12,7 +12,6 @@ import edu.harvard.iq.dataverse.api.imports.ImportUtil;
 import edu.harvard.iq.dataverse.api.imports.ImportUtil.ImportType;
 import edu.harvard.iq.dataverse.authorization.Permission;
 import edu.harvard.iq.dataverse.authorization.users.AuthenticatedUser;
-import edu.harvard.iq.dataverse.authorization.users.User;
 import edu.harvard.iq.dataverse.engine.command.AbstractCommand;
 import edu.harvard.iq.dataverse.engine.command.CommandContext;
 import edu.harvard.iq.dataverse.engine.command.DataverseRequest;
@@ -26,7 +25,6 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.validation.ConstraintViolation;
@@ -214,7 +212,32 @@ public class CreateDatasetCommand extends AbstractCommand<Dataset> {
             ctxt.em().merge(datasetVersionDataverseUser); 
         }
            logger.log(Level.FINE,"after create version user "  + formatter.format(new Date().getTime()));       
-        return savedDataset;
+
+           /** @todo use something like this as a trigger instead? */
+//        if (savedDataset.getOwner().getFileUploadMechanisms().contains("RSYNC")) {
+//
+//        }
+         /** @todo Go ahead and create the folder for files. Don't wait */
+        for (DatasetField datasetField : savedDataset.getLatestVersion().getDatasetFields()) {
+            /**
+             * @todo What should the trigger be for kicking off the
+             * RequestRsyncScriptCommand? For now we're looking for the presence
+             * of the "dataType" field, which is way too course.
+             *
+             * Does an argument get passed to the CreateDatasetCommand? What's
+             * the trigger? Something configured at the parent dataverse? Is the
+             * user forced to use rsync?
+             */
+            if ("dataType".equals(datasetField.getDatasetFieldType().getName())) {
+                try {
+                    ctxt.engine().submit(new RequestRsyncScriptCommand(getRequest(), savedDataset));
+                } catch (CommandException | RuntimeException ex) {
+                    logger.info("Attempt to request rsync script failed: " + ex.getLocalizedMessage());
+                }
+            }
+        }
+
+           return savedDataset;
     }
 
     @Override

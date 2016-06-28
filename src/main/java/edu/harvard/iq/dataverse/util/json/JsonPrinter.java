@@ -140,43 +140,56 @@ public class JsonPrinter {
         return bld;
     }
 
-    public static JsonObjectBuilder json(DataverseRole role) {
-        JsonObjectBuilder bld = jsonObjectBuilder()
-                .add("alias", role.getAlias())
-                .add("name", role.getName())
-                .add("permissions", json(role.permissions()))
-                .add("description", role.getDescription());
-        if (role.getId() != null) bld.add("id", role.getId());
-        if (role.getOwner() != null && role.getOwner().getId() != null) bld.add("ownerId", role.getOwner().getId());
+	public static JsonObjectBuilder json( DataverseRole role ) {
+		JsonObjectBuilder bld = jsonObjectBuilder()
+				.add("alias", role.getAlias()) 
+				.add("name", role.getName())
+				.add("permissions", json(role.permissions()))
+				.add("description", role.getDescription());
+		if ( role.getId() != null ) bld.add("id", role.getId() );
+		if ( role.getOwner()!=null && role.getOwner().getId()!=null ) bld.add("ownerId", role.getOwner().getId());
+		
+		return bld;
+	}
+	
+	public static JsonObjectBuilder json( Dataverse dv ) {
 
-        return bld;
-    }
+		/** @todo refactor this fileUploadMechanisms stuff into its own method */
+		JsonArrayBuilder fileUploadMechanismsEnabledArray = Json.createArrayBuilder();
+        /** @todo Each element in the array should be an object with a description taken from the bundle. */
+        String fileUploadMechanismsEnabledString = dv.getFileUploadMechanisms();
+        if (fileUploadMechanismsEnabledString != null) {
+            for (String mech : fileUploadMechanismsEnabledString.split(":")) {
+                fileUploadMechanismsEnabledArray.add(mech);
+            }
+        }
 
-    public static JsonObjectBuilder json(Dataverse dv) {
-        JsonObjectBuilder bld = jsonObjectBuilder()
-                .add("id", dv.getId())
-                .add("alias", dv.getAlias())
-                .add("name", dv.getName())
-                .add("affiliation", dv.getAffiliation())
-                .add("dataverseContacts", json(dv.getDataverseContacts()))
-                .add("permissionRoot", dv.isPermissionRoot())
-                .add("description", dv.getDescription())
-                .add("dataverseType", dv.getDataverseType().name());
-        if (dv.getOwner() != null) {
-            bld.add("ownerId", dv.getOwner().getId());
-        }
-        if (dv.getCreateDate() != null) {
-            bld.add("creationDate", Util.getDateTimeFormat().format(dv.getCreateDate()));
-        }
-        if (dv.getCreator() != null) {
-            bld.add("creator", json(dv.getCreator()));
+		JsonObjectBuilder bld = jsonObjectBuilder()
+						.add("id", dv.getId() )
+						.add("alias", dv.getAlias()) 
+						.add("name", dv.getName())
+                        .add("affiliation", dv.getAffiliation())
+                        .add("dataverseContacts", json(dv.getDataverseContacts()))
+						.add("permissionRoot", dv.isPermissionRoot())
+						.add("fileUploadMechanismsEnabled", fileUploadMechanismsEnabledArray)
+						.add("description", dv.getDescription())
+                        .add("dataverseType", dv.getDataverseType().name());
+
+        if ( dv.getOwner() != null ) {
+			bld.add("ownerId", dv.getOwner().getId());
+		}
+		if ( dv.getCreateDate() != null ) {
+			bld.add("creationDate", Util.getDateTimeFormat().format(dv.getCreateDate()));
+		}
+        if ( dv.getCreator() != null ) {
+            bld.add("creator",json(dv.getCreator()));
         }
         if (dv.getDataverseTheme() != null) {
             bld.add("theme", json(dv.getDataverseTheme()));
         }
 
-        return bld;
-    }
+		return bld;
+	}
 
     public static JsonArrayBuilder json(List<DataverseContact> dataverseContacts) {
         JsonArrayBuilder bld = Json.createArrayBuilder();
