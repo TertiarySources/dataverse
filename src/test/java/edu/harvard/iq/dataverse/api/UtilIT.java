@@ -39,7 +39,7 @@ public class UtilIT {
 
     private static SwordConfigurationImpl swordConfiguration = new SwordConfigurationImpl();
 
-    static String getRestAssuredBaseUri() {
+    public static String getRestAssuredBaseUri() {
         String saneDefaultInDev = "http://localhost:8080";
         String restAssuredBaseUri = saneDefaultInDev;
         String specifiedUri = System.getProperty("dataverse.test.baseurl");
@@ -90,35 +90,43 @@ public class UtilIT {
         return UUID.randomUUID().toString().substring(0, 8);
     }
 
-    static String getUsernameFromResponse(Response createUserResponse) {
+    public static String getUsernameFromResponse(Response createUserResponse) {
         JsonPath createdUser = JsonPath.from(createUserResponse.body().asString());
         String username = createdUser.getString("data.user." + USERNAME_KEY);
         logger.info("Username found in create user response: " + username);
         return username;
     }
 
-    static String getApiTokenFromResponse(Response createUserResponse) {
+    public static String getApiTokenFromResponse(Response createUserResponse) {
         JsonPath createdUser = JsonPath.from(createUserResponse.body().asString());
         String apiToken = createdUser.getString("data." + API_TOKEN_KEY);
         logger.info("API token found in create user response: " + apiToken);
         return apiToken;
     }
 
-    static String getAliasFromResponse(Response createDataverseResponse) {
+    public static String getAliasFromResponse(Response createDataverseResponse) {
         JsonPath createdDataverse = JsonPath.from(createDataverseResponse.body().asString());
         String alias = createdDataverse.getString("data.alias");
         logger.info("Alias found in create dataverse response: " + alias);
         return alias;
     }
 
-    static Integer getDatasetIdFromResponse(Response createDatasetResponse) {
+    public static Integer getDatasetIdFromResponse(Response createDatasetResponse) {
         JsonPath createdDataset = JsonPath.from(createDatasetResponse.body().asString());
         int datasetId = createdDataset.getInt("data.id");
         logger.info("Id found in create dataset response: " + datasetId);
         return datasetId;
     }
 
-    static String getDatasetPersistentIdFromResponse(Response createDatasetResponse) {
+    public static Response getDatasetResponse(String persistentId, String apiToken) {
+        Response datasetResponse = given()
+                .header(API_TOKEN_HTTP_HEADER, apiToken)
+                .contentType("application/json")
+                .get("/api/datasets/:persistentId?persistentId=" + persistentId);
+        return datasetResponse;
+    }
+
+    public static String getDatasetPersistentIdFromResponse(Response createDatasetResponse) {
         String xml = createDatasetResponse.body().asString();
         String datasetSwordIdUrl = from(xml).get("entry.id");
         /**
@@ -161,12 +169,12 @@ public class UtilIT {
         return createDataverse(alias, fileUploadMechanismsEnabled, apiToken);
     }
 
-    static Response createRandomDataverse(String apiToken) {
+    public static Response createRandomDataverse(String apiToken) {
         String alias = getRandomIdentifier();
         return createDataverse(alias, apiToken);
     }
 
-    static Response createRandomDatasetViaNativeApi(String dataverseAlias, String apiToken) {
+    public static Response createRandomDatasetViaNativeApi(String dataverseAlias, String apiToken) {
         String jsonIn = getDatasetJson();
         Response createDatasetResponse = given()
                 .header(API_TOKEN_HTTP_HEADER, apiToken)
@@ -219,12 +227,12 @@ public class UtilIT {
         }
     }
 
-    static Response createRandomDatasetViaSwordApi(String dataverseToCreateDatasetIn, String apiToken) {
+    public static Response createRandomDatasetViaSwordApi(String dataverseToCreateDatasetIn, String apiToken) {
         String xmlIn = getDatasetXml(getRandomIdentifier(), getRandomIdentifier(), getRandomIdentifier());
         return createDatasetViaSwordApiFromXML(dataverseToCreateDatasetIn, xmlIn, apiToken);
     }
 
-    static Response createDatasetViaSwordApi(String dataverseToCreateDatasetIn, String title, String apiToken) {
+    public static Response createDatasetViaSwordApi(String dataverseToCreateDatasetIn, String title, String apiToken) {
         String xmlIn = getDatasetXml(title, getRandomIdentifier(), getRandomIdentifier());
         return createDatasetViaSwordApiFromXML(dataverseToCreateDatasetIn, xmlIn, apiToken);
     }
@@ -238,14 +246,14 @@ public class UtilIT {
         return createDatasetResponse;
     }
 
-    static Response listDatasetsViaSword(String dataverseAlias, String apiToken) {
+    public static Response listDatasetsViaSword(String dataverseAlias, String apiToken) {
         Response response = given()
                 .auth().basic(apiToken, EMPTY_STRING)
                 .get(swordConfiguration.getBaseUrlPathCurrent() + "/collection/dataverse/" + dataverseAlias);
         return response;
     }
 
-    static Response updateDatasetTitleViaSword(String persistentId, String newTitle, String apiToken) {
+    public static Response updateDatasetTitleViaSword(String persistentId, String newTitle, String apiToken) {
         String xmlIn = getDatasetXml(newTitle, getRandomIdentifier(), getRandomIdentifier());
         Response updateDatasetResponse = given()
                 .auth().basic(apiToken, EMPTY_STRING)
